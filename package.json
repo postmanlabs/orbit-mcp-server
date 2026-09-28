@@ -1,0 +1,77 @@
+{
+  "name": "@postman/orbit-mcp-server",
+  "version": "1.1.2",
+  "description": "Authless MCP server exposing tools that proxy the public Orbit APIs (search + integrate).",
+  "keywords": [
+    "mcp",
+    "model-context-protocol",
+    "orbit",
+    "llm",
+    "agent"
+  ],
+  "type": "module",
+  "packageManager": "pnpm@10.33.2",
+  "engines": {
+    "node": ">=24.0.0"
+  },
+  "bin": {
+    "orbit-mcp-server": "dist/index.js"
+  },
+  "main": "dist/index.js",
+  "scripts": {
+    "build": "tsc",
+    "start": "node dist/index.js",
+    "start:http": "ORBIT_MCP_TRANSPORT=http node dist/index.js",
+    "dev": "tsx watch src/index.ts",
+    "dev:http": "ORBIT_MCP_TRANSPORT=http tsx watch src/index.ts",
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint src/ test/",
+    "lint:fix": "eslint src/ test/ --fix",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:coverage": "vitest run --coverage",
+    "check": "pnpm run typecheck && pnpm run lint && pnpm run format:check && pnpm run test",
+    "prepack": "pnpm run build"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.30.0",
+    "express": "^5.1.0",
+    "pino": "^9.5.0",
+    "pino-http": "^10.3.0",
+    "undici": "^6.21.0",
+    "zod": "^3.23.8"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.26.0",
+    "@types/express": "^5.0.2",
+    "@types/node": "^24.0.0",
+    "@types/supertest": "^6.0.2",
+    "@vitest/coverage-v8": "^3.2.4",
+    "eslint": "^9.26.0",
+    "eslint-config-prettier": "^9.1.0",
+    "pino-pretty": "^13.0.0",
+    "prettier": "^3.4.1",
+    "supertest": "^7.1.0",
+    "tsx": "^4.19.4",
+    "typescript": "^5.8.3",
+    "typescript-eslint": "^8.16.0",
+    "vitest": "^3.2.4"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/postmanlabs/orbit-mcp-server"
+  },
+  "bugs": {
+    "url": "https://github.com/postmanlabs/orbit-mcp-server/issues"
+  },
+  "homepage": "https://github.com/postmanlabs/orbit-mcp-server",
+  "publishConfig": {
+    "access": "public"
+  },
+  "license": "Apache-2.0",
+  "files": [
+    "dist"
+  ]
+}
