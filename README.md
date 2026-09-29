@@ -1,59 +1,107 @@
-# orbit-mcp-server
+# Orbit MCP Server
 
-Authless [MCP](https://modelcontextprotocol.io) server that proxies the **public** Orbit APIs. It exposes two tools — `search` and `integrate` — over **stdio** (for local MCP clients) or **Streamable HTTP**. No credentials are ever sent upstream; only public content is available.
+The **Orbit MCP Server** connects AI agents and coding assistants (Cursor, Claude, VS Code Copilot, Codex, and others) to public APIs via the [Model Context Protocol (MCP)](https://modelcontextprotocol.io). [Orbit](https://buildwithorbit.ai) is a free API discovery service by Postman that helps agents find, evaluate, and integrate public APIs.
 
-## Tools
+Use it when your agent needs to **discover public APIs or MCPs** and get a concrete brief for calling them. No API keys or login required.
 
-| Tool        | Description                                                                                                                                                                                                             |
-| ----------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `search`    | Search Orbit's public network for API endpoints. Returns minimal items (`id`, `resourceType`, `name`, and optionally `description`, `method`, `url`, `evaluateGuide`). Paginate via `meta.nextCursor` (up to 40 total). |
-| `integrate` | Given a `task` and one or more `resources` (each an `id` + `type` from `search`), returns a natural-language task brief describing how to call them. Retries once on a transient 502 / 504 / timeout.                   |
+---
 
-## Quick start (stdio)
+## What you can do
 
-```bash
-npx @postman/orbit-mcp-server
+1. **Search**: Ask in natural language (e.g. `"PayPal create invoice"`) and get matching public API endpoints and MCPs.
+2. **Evaluate**: Each result includes an `evaluateGuide` that explains what it does, when to use it, and its limits.
+3. **Integrate**: Pass your goal plus the chosen results to get a task brief covering auth, base URLs, request steps, parameters, and responses.
+
+Typical agent flow: `search` → review `evaluateGuide` → `integrate`.
+
+---
+
+## Quick start
+
+The fastest way to use Orbit is the **hosted remote MCP server**, with no install or credentials required. Point your client at:
+
+```
+https://mcp.buildwithorbit.ai/mcp
 ```
 
-Or clone and run locally:
+### Claude Code
 
 ```bash
-pnpm install
-pnpm build
-node dist/index.js
+claude mcp add --transport http orbit https://mcp.buildwithorbit.ai/mcp
 ```
 
-Point your MCP client at the command:
+### Cursor
+
+Add to `.cursor/mcp.json` (project) or `~/.cursor/mcp.json` (global):
 
 ```json
 {
-  "mcpServers": {
-    "orbit": { "command": "node", "args": ["/absolute/path/to/dist/index.js"] }
+  "servers": {
+    "orbit": {
+      "url": "https://mcp.buildwithorbit.ai/mcp"
+    }
   }
 }
 ```
 
-## HTTP (Streamable HTTP)
+### VS Code (Copilot)
 
-```bash
-ORBIT_MCP_TRANSPORT=http node dist/index.js
+Add to `.vscode/mcp.json` or your user MCP settings:
+
+```json
+{
+  "servers": {
+    "orbit": {
+      "type": "http",
+      "url": "https://mcp.buildwithorbit.ai/mcp"
+    }
+  }
+}
 ```
 
-- MCP endpoint: `POST http://127.0.0.1:8080/mcp` (stateless; `GET`/`DELETE` return `405`)
-- Health: `GET http://127.0.0.1:8080/knockknock`
+### Codex / ChatGPT
 
-## Configuration
+```bash
+codex mcp add orbit --url https://mcp.buildwithorbit.ai/mcp
+```
 
-All variables are optional. See `.env.example`.
+Prefer to run it yourself? See [Run from source](#run-from-source) below.
 
-| Variable                          | Default                         | Purpose                             |
-| --------------------------------- | ------------------------------- | ----------------------------------- |
-| `ORBIT_MCP_TRANSPORT`             | `stdio`                         | `stdio` or `http`                   |
-| `ORBIT_GATEWAY_BASE_URL`          | `https://api.buildwithorbit.ai` | Upstream Orbit gateway base URL     |
-| `ORBIT_SEARCH_TIMEOUT_SECONDS`    | `60`                            | Per-request timeout for `search`    |
-| `ORBIT_INTEGRATE_TIMEOUT_SECONDS` | `60`                            | Per-request timeout for `integrate` |
+---
 
-## Development
+## Tools
+
+| Tool        | What it does                                                                                                                                                                                                                                                      |
+| ----------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `search`    | Finds public API endpoints and MCPs for a query. Returns `id`, `resourceType` (`endpoint` or `mcp`), `name`, and usually `description`, `method`/`transport`, `url`, and `evaluateGuide`. Paginate with `cursor` from `meta.nextCursor` (up to 40 results total). |
+| `integrate` | Takes a `task` plus up to 10 resources from `search` (`id` + `type`) and returns a natural-language brief for calling them.                                                                                                                                       |
+
+**Search tips:** Prefer focused queries that name the product and the action (`"Twilio send SMS"`). Avoid stuffing many unrelated keywords or OR-chains into one query; make separate calls instead.
+
+---
+
+## Authentication
+
+None. The server never asks for, stores, or forwards credentials. Upstream calls go to Orbit's public gateway only.
+
+---
+
+## Run from source
+
+The server supports two transports: **stdio** (default) for local MCP clients, and **Streamable HTTP** for self-hosting or local testing.
+
+```bash
+pnpm install
+pnpm build
+node dist/index.js                          # stdio (default)
+ORBIT_MCP_TRANSPORT=http node dist/index.js # Streamable HTTP
+```
+
+In HTTP mode the MCP endpoint is `POST http://127.0.0.1:8080/mcp` and a health check is available at `GET http://127.0.0.1:8080/knockknock`. `GET` and `DELETE` on `/mcp` return `405`; the transport is stateless and does not use SSE sessions.
+
+All configuration is optional and set via environment variables. See [`.env.example`](./.env.example).
+
+Development:
 
 ```bash
 pnpm install
@@ -63,16 +111,23 @@ pnpm test
 pnpm run check
 ```
 
-## Docker
+### Docker
 
 ```bash
 docker build -t orbit-mcp-server .
 docker run -p 8080:8080 -e ORBIT_MCP_TRANSPORT=http orbit-mcp-server
 ```
 
+---
+
 ## Contributing
 
-Source changes are synced from the internal `postman-eng/orbit-mcp-server` repository. See [CONTRIBUTING.md](./CONTRIBUTING.md).
+Bug reports and documentation fixes are welcome. Implementation changes under `src/` are synced from Postman's internal repository. See [CONTRIBUTING.md](./CONTRIBUTING.md).
+
+- [Report a bug](https://github.com/postmanlabs/orbit-mcp-server/issues/new)
+- [Request a feature](https://github.com/postmanlabs/orbit-mcp-server/issues/new)
+
+---
 
 ## License
 
