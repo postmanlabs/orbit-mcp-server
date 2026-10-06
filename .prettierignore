@@ -6,3 +6,5 @@ parcels
 postman.yaml
 build.yml
 .github
+docs
+*.svg

@@ -12,6 +12,7 @@ import { serviceInfoRouter } from './routes/serviceInfo.js';
 const MCP_ENDPOINT = '/mcp';
 const KNOCKKNOCK_PATH = '/knockknock';
 const MAX_BODY_SIZE = '64kb';
+const MAX_BATCH_SIZE = 10;
 
 export interface HttpAppDeps {
   readonly logger: Logger;
@@ -67,6 +68,24 @@ export function createHttpApp(deps: HttpAppDeps): Express {
   app.use('/api/v1/service', serviceInfoRouter);
 
   app.post(MCP_ENDPOINT, async (req: Request, res: Response) => {
+    if (Array.isArray(req.body)) {
+      if (req.body.length === 0) {
+        res.status(400).json(jsonRpcError(-32600, 'Invalid Request: empty JSON-RPC batch.'));
+        return;
+      }
+      if (req.body.length > MAX_BATCH_SIZE) {
+        res
+          .status(400)
+          .json(
+            jsonRpcError(
+              -32600,
+              `Invalid Request: JSON-RPC batch of ${req.body.length} exceeds the limit of ${MAX_BATCH_SIZE}.`,
+            ),
+          );
+        return;
+      }
+    }
+
     const server = createServer();
     const transport = new StreamableHTTPServerTransport({
       sessionIdGenerator: undefined,
