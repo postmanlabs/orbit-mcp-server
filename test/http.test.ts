@@ -70,6 +70,45 @@ describe('MCP endpoint (stateless)', () => {
       .send({ jsonrpc: '2.0', id: 1, method: 'initialize', params: {} });
     expect(res.status).toBe(406);
   });
+
+  it('rejects a JSON-RPC batch that exceeds the size limit with 400', async () => {
+    const oversized = Array.from({ length: 11 }, (_, i) => ({
+      jsonrpc: '2.0',
+      id: i,
+      method: 'tools/list',
+      params: {},
+    }));
+    const res = await request(makeApp())
+      .post('/mcp')
+      .set('Accept', 'application/json, text/event-stream')
+      .send(oversized);
+    expect(res.status).toBe(400);
+    expect(res.body.error.code).toBe(-32600);
+    expect(res.body.error.message).toContain('exceeds the limit');
+  });
+
+  it('rejects an empty JSON-RPC batch with 400', async () => {
+    const res = await request(makeApp())
+      .post('/mcp')
+      .set('Accept', 'application/json, text/event-stream')
+      .send([]);
+    expect(res.status).toBe(400);
+    expect(res.body.error.code).toBe(-32600);
+  });
+
+  it('accepts a JSON-RPC batch at the size limit', async () => {
+    const batch = Array.from({ length: 10 }, (_, i) => ({
+      jsonrpc: '2.0',
+      id: i,
+      method: 'tools/list',
+      params: {},
+    }));
+    const res = await request(makeApp())
+      .post('/mcp')
+      .set('Accept', 'application/json, text/event-stream')
+      .send(batch);
+    expect(res.status).toBe(200);
+  });
 });
 
 describe('serviceInfo route', () => {
