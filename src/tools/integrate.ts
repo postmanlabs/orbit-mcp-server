@@ -4,10 +4,10 @@ import { z } from 'zod';
 
 import { GatewayError } from '../gateway.js';
 import {
-  clientHeaders,
   clientNameSchema,
   isPlainObject,
   toolError,
+  upstreamHeaders,
   type ToolDeps,
 } from './shared.js';
 
@@ -72,7 +72,10 @@ function extractTaskBrief(result: unknown): BriefResult {
   return { ok: true, brief: briefs.join('\n\n') };
 }
 
-function sendIntegrate({ config, gateway }: ToolDeps, args: IntegrateArgs): Promise<unknown> {
+function sendIntegrate(
+  { config, gateway, requestContext }: ToolDeps,
+  args: IntegrateArgs,
+): Promise<unknown> {
   const body = {
     task: args.task,
     resources: args.resources.map((resource) => ({ id: resource.id, type: resource.type })),
@@ -81,7 +84,7 @@ function sendIntegrate({ config, gateway }: ToolDeps, args: IntegrateArgs): Prom
     config.integrateUrl,
     body,
     config.integrateTimeoutSeconds,
-    clientHeaders(args.clientName),
+    upstreamHeaders(args.clientName, requestContext),
   );
 }
 

@@ -5,6 +5,7 @@ import pino from 'pino';
 import { loadConfig, type Config } from '../src/config.js';
 import { OrbitGateway, type FetchLike } from '../src/gateway.js';
 import { createMcpServer } from '../src/server.js';
+import type { RequestContext } from '../src/tools/shared.js';
 
 export const BASE_URL = 'https://gateway.test';
 export const SEARCH_URL = `${BASE_URL}/v1/search`;
@@ -51,10 +52,16 @@ export interface Harness {
 export async function connectHarness(opts: {
   fetchImpl: FetchLike;
   config?: Config;
+  requestContext?: RequestContext;
 }): Promise<Harness> {
   const config = opts.config ?? makeConfig();
   const gateway = new OrbitGateway({ fetchImpl: opts.fetchImpl });
-  const server = createMcpServer({ config, gateway, logger: silentLogger });
+  const server = createMcpServer({
+    config,
+    gateway,
+    logger: silentLogger,
+    requestContext: opts.requestContext,
+  });
 
   const [clientTransport, serverTransport] = InMemoryTransport.createLinkedPair();
   const client = new Client({ name: 'test-client', version: '0.0.0' });

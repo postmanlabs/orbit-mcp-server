@@ -5,16 +5,23 @@ import type { Config } from '../config.js';
 import type { OrbitGateway } from '../gateway.js';
 import type { Logger } from '../logger.js';
 
+export interface RequestContext {
+  readonly forwardedFor?: string | undefined;
+}
+
 /** Dependencies shared by all tool handlers. */
 export interface ToolDeps {
   /** Endpoint URLs and timeouts each tool needs to build its request. */
   readonly config: Config;
   readonly gateway: OrbitGateway;
   readonly logger: Logger;
+  readonly requestContext?: RequestContext | undefined;
 }
 
 /** HTTP header used to attribute a request to the calling client for analytics. */
 export const CLIENT_NAME_HEADER = 'orbit-client-name';
+
+export const FORWARDED_FOR_HEADER = 'x-forwarded-for';
 
 /**
  * Shared, optional `clientName` tool parameter forwarded to the gateway as the
@@ -33,9 +40,21 @@ export const clientNameSchema = z
       '"claude/sonnet-4.6", "codex/gpt-5.6-sol"). Used for anonymous usage analytics.',
   );
 
-/** Build the optional analytics header block for an upstream request. */
-export function clientHeaders(clientName?: string): Record<string, string> | undefined {
-  return clientName ? { [CLIENT_NAME_HEADER]: clientName } : undefined;
+/**
+ * Build the optional extra header block for an upstream request
+ */
+export function upstreamHeaders(
+  clientName?: string,
+  context?: RequestContext,
+): Record<string, string> | undefined {
+  const headers: Record<string, string> = {};
+  if (clientName) {
+    headers[CLIENT_NAME_HEADER] = clientName;
+  }
+  if (context?.forwardedFor) {
+    headers[FORWARDED_FOR_HEADER] = context.forwardedFor;
+  }
+  return Object.keys(headers).length > 0 ? headers : undefined;
 }
 
 /** Build an MCP tool-error result whose text is surfaced to the calling agent. */

@@ -76,7 +76,7 @@ async function run(config: Config, logger: Logger): Promise<void> {
   const http = await startHttpServer({
     config,
     logger,
-    createServer: () => createMcpServer({ config, gateway, logger }),
+    createServer: (requestContext) => createMcpServer({ config, gateway, logger, requestContext }),
   });
 
   setupProcessHandlers(logger, async () => {

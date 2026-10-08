@@ -12,3 +12,5 @@ this repository.
 
 - [Bug report](https://github.com/postmanlabs/orbit-mcp-server/issues/new)
 - [Feature request](https://github.com/postmanlabs/orbit-mcp-server/issues/new)
+
+Do not file security vulnerabilities as public issues. See [SECURITY.md](./SECURITY.md).

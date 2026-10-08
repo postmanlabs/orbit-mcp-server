@@ -144,6 +144,31 @@ describe('search tool', () => {
     expect(Object.keys(headers).map((k) => k.toLowerCase())).not.toContain('orbit-client-name');
   });
 
+  it('forwards the inbound x-forwarded-for chain to the gateway', async () => {
+    const fetchMock = alwaysFetch(() => jsonResponse(200, { data: [], meta: {} }));
+    harness = await connectHarness({
+      fetchImpl: fetchMock as never,
+      requestContext: { forwardedFor: '203.0.113.7, 70.41.3.18' },
+    });
+
+    await harness.client.callTool({ name: 'search', arguments: { q: 'payments' } });
+
+    const [, init] = fetchMock.mock.calls[0]!;
+    const headers = (init as RequestInit).headers as Record<string, string>;
+    expect(headers['x-forwarded-for']).toBe('203.0.113.7, 70.41.3.18');
+  });
+
+  it('omits x-forwarded-for when the inbound request carried none', async () => {
+    const fetchMock = alwaysFetch(() => jsonResponse(200, { data: [], meta: {} }));
+    harness = await connectHarness({ fetchImpl: fetchMock as never });
+
+    await harness.client.callTool({ name: 'search', arguments: { q: 'payments' } });
+
+    const [, init] = fetchMock.mock.calls[0]!;
+    const headers = (init as RequestInit).headers as Record<string, string>;
+    expect(Object.keys(headers).map((k) => k.toLowerCase())).not.toContain('x-forwarded-for');
+  });
+
   it('surfaces an upstream 400 verbatim as a tool error', async () => {
     const problem = {
       type: 'about:blank',
@@ -248,6 +273,20 @@ describe('integrate tool', () => {
       task: 'get the weather',
       resources: [{ id: 'req-1', type: 'endpoint' }],
     });
+  });
+
+  it('forwards the inbound x-forwarded-for chain to the gateway', async () => {
+    const fetchMock = alwaysFetch(() => jsonResponse(200, { data: [{ taskBrief: brief }] }));
+    harness = await connectHarness({
+      fetchImpl: fetchMock as never,
+      requestContext: { forwardedFor: '198.51.100.5' },
+    });
+
+    await harness.client.callTool({ name: 'integrate', arguments: args });
+
+    const [, init] = fetchMock.mock.calls[0]!;
+    const headers = (init as RequestInit).headers as Record<string, string>;
+    expect(headers['x-forwarded-for']).toBe('198.51.100.5');
   });
 
   it('sends every provided resource in the request body', async () => {
