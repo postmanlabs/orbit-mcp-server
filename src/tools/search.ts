@@ -4,10 +4,10 @@ import { z } from 'zod';
 
 import { GatewayError } from '../gateway.js';
 import {
-  clientHeaders,
   clientNameSchema,
   isPlainObject,
   toolError,
+  upstreamHeaders,
   type ToolDeps,
 } from './shared.js';
 
@@ -64,7 +64,10 @@ interface SearchArgs {
  * Build the Orbit search request and delegate the HTTP call to the gateway:
  * `limit`/`cursor` go on the query string, only `q` goes in the JSON body.
  */
-function runSearch({ config, gateway }: ToolDeps, args: SearchArgs): Promise<unknown> {
+function runSearch(
+  { config, gateway, requestContext }: ToolDeps,
+  args: SearchArgs,
+): Promise<unknown> {
   const url = new URL(config.searchUrl);
   url.searchParams.set('limit', String(args.limit));
   if (args.cursor !== undefined) {
@@ -74,7 +77,7 @@ function runSearch({ config, gateway }: ToolDeps, args: SearchArgs): Promise<unk
     url.toString(),
     { q: args.q },
     config.searchTimeoutSeconds,
-    clientHeaders(args.clientName),
+    upstreamHeaders(args.clientName, requestContext),
   );
 }
 

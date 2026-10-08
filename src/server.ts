@@ -5,6 +5,7 @@ import type { OrbitGateway } from './gateway.js';
 import type { Logger } from './logger.js';
 import { registerIntegrateTool } from './tools/integrate.js';
 import { registerSearchTool } from './tools/search.js';
+import type { RequestContext } from './tools/shared.js';
 import { SERVER_NAME, VERSION } from './version.js';
 
 const INSTRUCTIONS =
@@ -18,6 +19,7 @@ export interface CreateServerDeps {
   readonly config: Config;
   readonly gateway: OrbitGateway;
   readonly logger: Logger;
+  readonly requestContext?: RequestContext | undefined;
 }
 
 /**
@@ -25,14 +27,19 @@ export interface CreateServerDeps {
  *
  * Both `search` and `integrate` are always registered.
  */
-export function createMcpServer({ config, gateway, logger }: CreateServerDeps): McpServer {
+export function createMcpServer({
+  config,
+  gateway,
+  logger,
+  requestContext,
+}: CreateServerDeps): McpServer {
   const server = new McpServer(
     { name: SERVER_NAME, version: VERSION },
     { instructions: INSTRUCTIONS },
   );
 
-  registerSearchTool(server, { config, gateway, logger });
-  registerIntegrateTool(server, { config, gateway, logger });
+  registerSearchTool(server, { config, gateway, logger, requestContext });
+  registerIntegrateTool(server, { config, gateway, logger, requestContext });
 
   return server;
 }

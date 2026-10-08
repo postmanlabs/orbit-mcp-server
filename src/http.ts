@@ -8,6 +8,7 @@ import { pinoHttp } from 'pino-http';
 import type { Config } from './config.js';
 import type { Logger } from './logger.js';
 import { serviceInfoRouter } from './routes/serviceInfo.js';
+import type { RequestContext } from './tools/shared.js';
 
 const MCP_ENDPOINT = '/mcp';
 const KNOCKKNOCK_PATH = '/knockknock';
@@ -16,8 +17,11 @@ const MAX_BATCH_SIZE = 10;
 
 export interface HttpAppDeps {
   readonly logger: Logger;
-  /** Factory that builds a fresh {@link McpServer} for each request. */
-  readonly createServer: () => McpServer;
+  /**
+   * Factory that builds a fresh {@link McpServer} for each request, given the
+   * per-request {@link RequestContext} derived from the inbound HTTP request.
+   */
+  readonly createServer: (context: RequestContext) => McpServer;
 }
 
 export interface HttpServerDeps extends HttpAppDeps {
@@ -31,6 +35,11 @@ export interface RunningHttpServer {
 
 function jsonRpcError(code: number, message: string): object {
   return { jsonrpc: '2.0', error: { code, message }, id: null };
+}
+
+function readForwardedFor(value: string | string[] | undefined): string | undefined {
+  const forwardedFor = Array.isArray(value) ? value.join(', ') : value;
+  return forwardedFor && forwardedFor.length > 0 ? forwardedFor : undefined;
 }
 
 /**
@@ -86,7 +95,7 @@ export function createHttpApp(deps: HttpAppDeps): Express {
       }
     }
 
-    const server = createServer();
+    const server = createServer({ forwardedFor: readForwardedFor(req.headers['x-forwarded-for']) });
     const transport = new StreamableHTTPServerTransport({
       sessionIdGenerator: undefined,
       enableJsonResponse: true,
