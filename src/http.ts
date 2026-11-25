@@ -2,7 +2,7 @@ import type { Server } from 'node:http';
 
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { StreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/streamableHttp.js';
-import express, { type Express, type Request, type Response } from 'express';
+import express, { type Express, type NextFunction, type Request, type Response } from 'express';
 import { pinoHttp } from 'pino-http';
 
 import type { Config } from './config.js';
@@ -14,6 +14,17 @@ const MCP_ENDPOINT = '/mcp';
 const KNOCKKNOCK_PATH = '/knockknock';
 const MAX_BODY_SIZE = '64kb';
 const MAX_BATCH_SIZE = 10;
+
+/**
+ * Baseline security headers for every response. The service only ever returns
+ * JSON, so the CSP forbids loading or framing anything.
+ */
+const SECURITY_HEADERS: Readonly<Record<string, string>> = {
+  'X-Content-Type-Options': 'nosniff',
+  'X-Frame-Options': 'DENY',
+  'Referrer-Policy': 'no-referrer',
+  'Content-Security-Policy': "default-src 'none'; frame-ancestors 'none'",
+};
 
 export interface HttpAppDeps {
   readonly logger: Logger;
@@ -60,6 +71,11 @@ export function createHttpApp(deps: HttpAppDeps): Express {
 
   const app = express();
   app.disable('x-powered-by');
+
+  app.use((_req: Request, res: Response, next: NextFunction) => {
+    res.set(SECURITY_HEADERS);
+    next();
+  });
 
   app.use(
     pinoHttp({

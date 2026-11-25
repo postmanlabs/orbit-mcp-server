@@ -120,6 +120,42 @@ describe('serviceInfo route', () => {
   });
 });
 
+describe('security headers', () => {
+  const expectSecurityHeaders = (headers: Record<string, string>) => {
+    expect(headers['x-content-type-options']).toBe('nosniff');
+    expect(headers['x-frame-options']).toBe('DENY');
+    expect(headers['referrer-policy']).toBe('no-referrer');
+    expect(headers['content-security-policy']).toMatch(/^default-src 'none'/);
+    expect(headers['x-powered-by']).toBeUndefined();
+  };
+
+  it('are set on the health probe', async () => {
+    const res = await request(makeApp()).get('/knockknock');
+    expectSecurityHeaders(res.headers);
+  });
+
+  it('are set on MCP responses written by the transport', async () => {
+    const res = await request(makeApp())
+      .post('/mcp')
+      .set('Accept', 'application/json, text/event-stream')
+      .send({ jsonrpc: '2.0', id: 1, method: 'tools/list', params: {} });
+    expect(res.status).toBe(200);
+    expectSecurityHeaders(res.headers);
+  });
+
+  it('are set on error responses', async () => {
+    const notFound = await request(makeApp()).get('/nope');
+    expectSecurityHeaders(notFound.headers);
+
+    const malformed = await request(makeApp())
+      .post('/mcp')
+      .set('Content-Type', 'application/json')
+      .send('{not json');
+    expect(malformed.status).toBe(400);
+    expectSecurityHeaders(malformed.headers);
+  });
+});
+
 describe('unknown route', () => {
   it('returns a 404 pointing at the MCP endpoint', async () => {
     const res = await request(makeApp()).get('/nope');
